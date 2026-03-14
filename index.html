@@ -815,8 +815,10 @@ let streakFreezes=1,lastFreezeWeek="";
 let settings={sound:true,vibrate:true};
 let weeklyGoalXP=7000;
 let userName="",examDate="",apiKey="";
+let onboardingDone=false;
 let chatHistory=[];
-let weekChallenges=[];
+let weekChallengeIds=[];   // only IDs saved to JSON (functions can't be serialised)
+let weekChallengesWeek=""; // the Mon-key when challenges were generated
 let pomoMode="full";
 let timerState=null,timerInterval=null;
 let quoteIdx=0;
@@ -837,7 +839,7 @@ function perfectCount(s){return Object.keys(s.history||{}).filter(k=>k.length===
 ════════════════════════════════════════ */
 function load(){try{return JSON.parse(localStorage.getItem(SK)||"null");}catch{return null;}}
 function save(){
-  try{localStorage.setItem(SK,JSON.stringify({totalXP,streak,bestStreak,lastActiveDay,todayKey,todayDone,todayNotes,todaySubjects,history,historySubjects,achievements,streakFreezes,lastFreezeWeek,settings,weeklyGoalXP,userName,examDate,apiKey,chatHistory,weekChallenges}));}
+  try{localStorage.setItem(SK,JSON.stringify({totalXP,streak,bestStreak,lastActiveDay,todayKey,todayDone,todayNotes,todaySubjects,history,historySubjects,achievements,streakFreezes,lastFreezeWeek,settings,weeklyGoalXP,userName,examDate,apiKey,chatHistory,weekChallengeIds,weekChallengesWeek,onboardingDone}));}
   catch(e){console.warn("Save failed",e);}
 }
 
@@ -881,7 +883,6 @@ function computeReadiness(){
 
   // Generate insight
   let insight,action;
-  const weakest=Math.min(studyFactor,pyqFactor,consistencyFactor);
   if(score>=80){insight="You are GATE-ready. Maintain this level.";action="Keep the streak alive";}
   else if(score>=60){insight="Good progress. Need more consistency in study blocks.";action="Focus: Study Block III completion";}
   else if(score>=40){insight="Building foundation. Your PYQ hours need to increase.";action="Priority: Both PYQ blocks daily";}
@@ -919,7 +920,7 @@ function generateInsight(){
 
   // Perfect day streak
   const recentPerfect=days7.filter(k=>(history[k]||[]).length===BLOCKS.length).length;
-  if(recentPerfect>=3)insights.push({icon:"👑",text:`${recentPerfect} perfect days this week! You're operating at elite level.`,action:"Make it ${7} this week"});
+  if(recentPerfect>=3)insights.push({icon:"👑",text:`${recentPerfect} perfect days this week! You're operating at elite level.`,action:"Make it 7 this week"});
 
   // Study trend
   const thisWeekStudy=days7.slice(3).reduce((a,k)=>a+BLOCKS.filter(b=>b.type==="study"&&(history[k]||[]).includes(b.id)).reduce((x,b)=>x+b.hours,0),0);
@@ -934,27 +935,53 @@ function generateInsight(){
 /* ════════════════════════════════════════
    WEEKLY CHALLENGES
 ════════════════════════════════════════ */
+function getThisWeekDays(){
+  // Returns days from Monday of current week up to and including today
+  const today=new Date();
+  const dow=today.getDay()||7; // 1=Mon … 7=Sun
+  const days=[];
+  for(let i=1;i<=dow;i++){
+    const d=new Date(today);
+    d.setDate(today.getDate()-(dow-i));
+    days.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+  }
+  return days;
+}
+
 function generateWeeklyChallenges(){
   const wk=getWeekKey();
-  // Use week as seed for deterministic selection
   const seed=wk.split("-").reduce((a,n)=>a+parseInt(n),0);
-  const shuffled=[...WEEKLY_CHALLENGES_POOL].sort((a,b)=>((seed*a.id.charCodeAt(0))%7)-((seed*b.id.charCodeAt(0))%7));
-  weekChallenges=shuffled.slice(0,3);
+  const shuffled=[...WEEKLY_CHALLENGES_POOL].sort((a,b)=>
+    ((seed*a.id.charCodeAt(2))%13)-((seed*b.id.charCodeAt(2))%13)
+  );
+  weekChallengeIds=shuffled.slice(0,3).map(c=>c.id);
+  weekChallengesWeek=wk;
   save();
 }
 
+function getChallenge(id){
+  return WEEKLY_CHALLENGES_POOL.find(c=>c.id===id)||null;
+}
+
 function getChallengeProgress(ch){
-  const keys=getLast7Days();
+  // Use days from Monday of this week up to today — not a rolling 7-day window
+  const keys=getThisWeekDays();
   return ch.track(history,keys);
 }
 
 function renderChallenges(){
-  const c=document.getElementById("challenges-container");
-  if(!weekChallenges.length){generateWeeklyChallenges();}
-  let totalPossible=weekChallenges.reduce((a,c)=>a+c.xp,0);
-  let totalEarned=0;
-  c.innerHTML="";
-  weekChallenges.forEach(ch=>{
+  const container=document.getElementById("challenges-container");
+  // Regenerate if new week or no challenges yet
+  const currentWeek=getWeekKey();
+  if(!weekChallengeIds.length||weekChallengesWeek!==currentWeek){
+    generateWeeklyChallenges();
+  }
+  let totalPossible=0,totalEarned=0;
+  container.innerHTML="";
+  weekChallengeIds.forEach(id=>{
+    const ch=getChallenge(id);
+    if(!ch)return; // safety guard
+    totalPossible+=ch.xp;
     const prog=getChallengeProgress(ch);
     const done=prog>=ch.target;
     if(done)totalEarned+=ch.xp;
@@ -973,7 +1000,7 @@ function renderChallenges(){
         </div>
       </div>
       <div class="ch-xp">+${ch.xp}</div>`;
-    c.appendChild(div);
+    container.appendChild(div);
   });
   document.getElementById("challenges-xp").textContent=`${totalEarned}/${totalPossible} XP`;
 }
@@ -996,8 +1023,10 @@ function renderChallenges(){
     settings=Object.assign({sound:true,vibrate:true},s.settings||{});
     weeklyGoalXP=s.weeklyGoalXP||7000;
     userName=s.userName||"";examDate=s.examDate||"";apiKey=s.apiKey||"";
+    onboardingDone=s.onboardingDone||false;
     chatHistory=s.chatHistory||[];
-    weekChallenges=s.weekChallenges||[];
+    weekChallengeIds=s.weekChallengeIds||[];
+    weekChallengesWeek=s.weekChallengesWeek||"";
 
     if(s.todayKey===todayKey){
       todayDone=s.todayDone||[];todayNotes=s.todayNotes||{};todaySubjects=s.todaySubjects||{};
@@ -1013,13 +1042,15 @@ function renderChallenges(){
   const wk=getWeekKey();
   if(lastFreezeWeek!==wk){streakFreezes=1;lastFreezeWeek=wk;save();}
 
-  // Re-generate challenges if new week
-  if(!weekChallenges.length)generateWeeklyChallenges();
+  // Generate challenges if none exist OR if it's a new week
+  if(!weekChallengeIds.length||weekChallengesWeek!==getWeekKey()){
+    generateWeeklyChallenges();
+  }
 
   history[todayKey]=todayDone;
 
-  // Check if first time user
-  const isFirstTime=!s||!s.totalXP;
+  // Check if first time user — use explicit flag, NOT totalXP (which stays 0 until first block done)
+  const isFirstTime=!onboardingDone;
 
   // Show splash then onboarding or app
   setTimeout(()=>{
@@ -1075,6 +1106,7 @@ function nextStep(){
 
 function finishOnboarding(){
   const v=document.getElementById("ob-api-key").value.trim();if(v)apiKey=v;
+  onboardingDone=true; // ← prevents onboarding showing again on every open
   save();
   const ob=document.getElementById("onboarding");
   ob.style.opacity="0";ob.style.transition="opacity .5s";
@@ -1207,7 +1239,8 @@ function renderBlocks(){
         tag.textContent=sub;
         tag.onclick=()=>{
           todaySubjects[block.id]=selSubject===sub?null:sub;
-          historySubjects[todayKey]=todaySubjects;
+          if(!historySubjects[todayKey])historySubjects[todayKey]={};
+          historySubjects[todayKey]=Object.assign({},todaySubjects);
           save();renderBlocks();
         };
         tagRow.appendChild(tag);
@@ -1830,7 +1863,8 @@ function startMidnightCheck(){
     const prev=new Date(todayKey);const now=new Date(nk);const diff=Math.round((now-prev)/86400000);
     if(diff>1&&streakFreezes>=0)streak=0;
     todayKey=nk;todayDone=[];todayNotes={};todaySubjects={};history[todayKey]=[];
-    const wk=getWeekKey();if(lastFreezeWeek!==wk){streakFreezes=1;lastFreezeWeek=wk;generateWeeklyChallenges();}
+    const wk=getWeekKey();if(lastFreezeWeek!==wk){streakFreezes=1;lastFreezeWeek=wk;}
+    if(weekChallengesWeek!==wk){generateWeeklyChallenges();}
     save();renderAll();applySettings();
   },60000);
 }
