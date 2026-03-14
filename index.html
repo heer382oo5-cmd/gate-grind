@@ -806,7 +806,6 @@ const Q_EVENING=["PYQ time. This is where rank is decided. Solve with intent.","
 /* ════════════════════════════════════════
    STATE
 ════════════════════════════════════════ */
-const SK="gate_grind_v3";
 let totalXP=0,streak=0,bestStreak=0,lastActiveDay="";
 let todayKey=getToday(),todayDone=[],todayNotes={},todaySubjects={};
 let history={},historySubjects={};
@@ -835,12 +834,51 @@ function daysWithBothPYQ(s){return Object.keys(s.history||{}).filter(k=>k.length
 function perfectCount(s){return Object.keys(s.history||{}).filter(k=>k.length===10&&(s.history[k]||[]).length===BLOCKS.length).length;}
 
 /* ════════════════════════════════════════
-   STORAGE
+   STORAGE  — v4 key + v3 migration
 ════════════════════════════════════════ */
-function load(){try{return JSON.parse(localStorage.getItem(SK)||"null");}catch{return null;}}
+const SK="gate_grind_v4";   // bumped — forces clean load path
+const SK_OLD="gate_grind_v3";
+
+function load(){
+  // Try v4 first
+  try{
+    const raw=localStorage.getItem(SK);
+    if(raw)return JSON.parse(raw);
+  }catch(e){}
+  // Migrate from v3 if present
+  try{
+    const old=localStorage.getItem(SK_OLD);
+    if(!old)return null;
+    const s=JSON.parse(old);
+    // v3 had weekChallenges (full objects with functions stripped) — drop it
+    delete s.weekChallenges;
+    // Mark onboarding done if they had ANY data at all (they already used the app)
+    if(s.totalXP>0||s.streak>0||(s.history&&Object.keys(s.history).length>0)){
+      s.onboardingDone=true;
+    }
+    s.weekChallengeIds=[];
+    s.weekChallengesWeek="";
+    // Save migrated data into v4 key
+    localStorage.setItem(SK,JSON.stringify(s));
+    localStorage.removeItem(SK_OLD);
+    return s;
+  }catch(e){return null;}
+}
+
 function save(){
-  try{localStorage.setItem(SK,JSON.stringify({totalXP,streak,bestStreak,lastActiveDay,todayKey,todayDone,todayNotes,todaySubjects,history,historySubjects,achievements,streakFreezes,lastFreezeWeek,settings,weeklyGoalXP,userName,examDate,apiKey,chatHistory,weekChallengeIds,weekChallengesWeek,onboardingDone}));}
-  catch(e){console.warn("Save failed",e);}
+  try{
+    localStorage.setItem(SK,JSON.stringify({
+      totalXP,streak,bestStreak,lastActiveDay,
+      todayKey,todayDone,todayNotes,todaySubjects,
+      history,historySubjects,
+      achievements,streakFreezes,lastFreezeWeek,
+      settings,weeklyGoalXP,
+      userName,examDate,apiKey,
+      chatHistory,
+      weekChallengeIds,weekChallengesWeek,
+      onboardingDone
+    }));
+  }catch(e){console.warn("Save failed",e);}
 }
 
 /* ════════════════════════════════════════
@@ -1031,9 +1069,14 @@ function renderChallenges(){
     if(s.todayKey===todayKey){
       todayDone=s.todayDone||[];todayNotes=s.todayNotes||{};todaySubjects=s.todaySubjects||{};
     } else {
-      const prev=new Date(s.todayKey||todayKey);const now=new Date(todayKey);
+      const prev=new Date(s.todayKey||todayKey);
+      const now=new Date(todayKey);
       const diff=Math.round((now-prev)/86400000);
-      if(diff>1&&streakFreezes>=0)streak=0;
+      if(diff>1){
+        // Only break streak if no freeze is active (freeze = -1 means active)
+        if(streakFreezes!==-1) streak=0;
+        else streakFreezes=0; // used up the freeze
+      }
       todayDone=[];todayNotes={};todaySubjects={};
     }
   }
@@ -1860,10 +1903,15 @@ function showToast(msg){const t=document.createElement("div");t.className="toast
 function startMidnightCheck(){
   setInterval(()=>{
     const nk=getToday();if(nk===todayKey)return;
-    const prev=new Date(todayKey);const now=new Date(nk);const diff=Math.round((now-prev)/86400000);
-    if(diff>1&&streakFreezes>=0)streak=0;
+    const prev=new Date(todayKey);const now=new Date(nk);
+    const diff=Math.round((now-prev)/86400000);
+    if(diff>1){
+      if(streakFreezes===-1)streakFreezes=0; // used up freeze
+      else streak=0;
+    }
     todayKey=nk;todayDone=[];todayNotes={};todaySubjects={};history[todayKey]=[];
-    const wk=getWeekKey();if(lastFreezeWeek!==wk){streakFreezes=1;lastFreezeWeek=wk;}
+    const wk=getWeekKey();
+    if(lastFreezeWeek!==wk){streakFreezes=1;lastFreezeWeek=wk;}
     if(weekChallengesWeek!==wk){generateWeeklyChallenges();}
     save();renderAll();applySettings();
   },60000);
