@@ -705,8 +705,8 @@ body{
   <div class="ob-step" id="ob-step-3">
     <div class="ob-icon">🤖</div>
     <div class="ob-title">AI Study Coach</div>
-    <div class="ob-desc">Add your Claude API key to unlock ARIA — your personal AI mentor who analyses your study data and guides you.<br/><br/>Get a free key at <strong style="color:var(--blue)">console.anthropic.com</strong></div>
-    <input class="ob-input" id="ob-api-key" placeholder="sk-ant-..." type="password" autocomplete="off"/>
+    <div class="ob-desc">Add your free Gemini API key to unlock ARIA — your personal AI mentor who analyses your study data and guides you.<br/><br/>Get your <strong style="color:var(--green)">100% free</strong> key at <strong style="color:var(--blue)">aistudio.google.com</strong> → Get API Key. No credit card needed.</div>
+    <input class="ob-input" id="ob-api-key" placeholder="AIza..." type="password" autocomplete="off"/>
     <button class="ob-btn" onclick="finishOnboarding()">START GRINDING</button>
     <div class="ob-skip" onclick="finishOnboarding()">SKIP FOR NOW</div>
   </div>
@@ -869,16 +869,16 @@ body{
     <div id="tab-coach" class="tab-pane">
       <div class="ai-header">
         <div class="ai-avatar">🤖</div>
-        <div class="ai-name">ARIA · AI MENTOR</div>
-        <div class="ai-status" id="ai-status">Your personal GATE study coach</div>
+        <div class="ai-name">ARIA · GEMINI MENTOR</div>
+        <div class="ai-status" id="ai-status">Powered by Google Gemini · Free forever</div>
       </div>
 
       <!-- API setup panel (shown when no key) -->
       <div id="api-setup-panel" style="display:none;">
         <div class="api-setup-wrap">
-          <div class="api-setup-title">CONNECT YOUR AI KEY</div>
-          <input class="api-input" id="api-key-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
-          <div class="api-hint">Get a free key at <strong style="color:var(--blue);">console.anthropic.com</strong> → API Keys.<br/>Your key is stored locally on your device only.</div>
+          <div class="api-setup-title">CONNECT GEMINI AI (FREE)</div>
+          <input class="api-input" id="api-key-input" type="password" placeholder="AIzaSy..." autocomplete="off"/>
+          <div class="api-hint">Get your <strong style="color:var(--green);">100% free</strong> key at <strong style="color:var(--blue);">aistudio.google.com</strong> → Get API Key.<br/>No credit card. No billing. Stored locally on your device only.</div>
           <button class="api-save-btn" onclick="saveApiKey()">CONNECT AI COACH</button>
         </div>
       </div>
@@ -1046,11 +1046,11 @@ body{
         <div class="settings-section">
           <div class="settings-section-title">AI COACH</div>
           <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:9px;">
-            <div class="settings-label">Claude API Key</div>
-            <input id="api-key-settings" type="password" placeholder="sk-ant-..."
+            <div class="settings-label">Gemini API Key <span style="font-size:9px;color:var(--green);letter-spacing:2px;margin-left:6px;">FREE</span></div>
+            <input id="api-key-settings" type="password" placeholder="AIzaSy..."
               style="width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none;"
               oninput="updateApiKey(this.value)" autocomplete="off"/>
-            <div style="font-size:10px;color:var(--muted);">Get free key at console.anthropic.com → API Keys</div>
+            <div style="font-size:10px;color:var(--muted);">Free key at <span style="color:var(--blue);">aistudio.google.com</span> → Get API Key (no credit card)</div>
           </div>
         </div>
 
@@ -1099,7 +1099,7 @@ body{
         </div>
 
         <div style="text-align:center;padding:20px 0 10px;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:9px;letter-spacing:4px;color:var(--muted);">GATE GRIND v4.0 · ELITE EDITION</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:9px;letter-spacing:4px;color:var(--muted);">GATE GRIND v4.0 · GEMINI AI EDITION</div>
           <div style="font-size:10px;color:var(--dim);margin-top:5px;font-style:italic;">Built for the 1%. Are you the 1%?</div>
         </div>
       </div>
@@ -1858,7 +1858,7 @@ function setupCoachTab(){
   if(apiKey){
     document.getElementById("api-setup-panel").style.display="none";
     document.getElementById("chat-panel").style.display="block";
-    if(!chatHistory.length)addAiMessage(`Hey${userName?" "+userName:""}! I'm Aria, your GATE study mentor. I have access to your study data. Ask me anything — strategy, doubts, motivation, or analysis of your progress.`);
+    if(!chatHistory.length)addAiMessage(`Hey${userName?" "+userName:""}! I'm Aria, powered by Google Gemini. I have access to your real study data — ask me anything about strategy, weak areas, motivation, or exam analysis.`);
     else renderChatHistory();
   }else{
     document.getElementById("api-setup-panel").style.display="block";
@@ -1868,8 +1868,8 @@ function setupCoachTab(){
 
 function saveApiKey(){
   const val=(document.getElementById("api-key-input").value||"").trim();
-  if(!val||!val.startsWith("sk-")){showToast("❌ Invalid API key format");return;}
-  apiKey=val;save();setupCoachTab();showToast("✅ AI Coach connected!");
+  if(!val||!val.startsWith("AIza")){showToast("❌ Invalid key — should start with AIza...");return;}
+  apiKey=val;save();setupCoachTab();showToast("✅ Gemini AI Coach connected!");
   const settingsKeyEl=document.getElementById("api-key-settings");
   if(settingsKeyEl)settingsKeyEl.value=val;
 }
@@ -1913,7 +1913,7 @@ Last 7 days: ${weeklyBlocks}. Readiness: ${score}%.`;
 }
 
 async function sendChat(){
-  if(!apiKey){showToast("Connect API key in Settings first");return;}
+  if(!apiKey){showToast("Connect Gemini key in Settings first");return;}
   const input=document.getElementById("chat-input");
   const msg=(input.value||"").trim();if(!msg)return;
   input.value="";
@@ -1923,31 +1923,58 @@ async function sendChat(){
   const area=document.getElementById("chat-area");
   const loading=document.createElement("div");loading.className="chat-msg ai loading";loading.textContent="Aria is thinking…";
   area.appendChild(loading);area.scrollTop=area.scrollHeight;
+
   try{
-    const messages=chatHistory.slice(-12).filter(m=>m.role!==undefined).slice(0,-1);
-    messages.push({role:"user",content:msg});
-    const res=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",max_tokens:300,
-        system:`You are Aria, an elite GATE exam mentor AI inside the GATE Grind app. You are sharp, direct, motivating, and data-driven. You deeply understand GATE exam preparation — syllabus, PYQ patterns, time management, subject strategies.
+    // Build Gemini contents array from chat history (last 12 messages)
+    // Gemini uses "user" / "model" roles (not "assistant")
+    const recentHistory=chatHistory.slice(-13,-1); // exclude the msg we just added
+    const contents=recentHistory.map(m=>({
+      role:m.role==="assistant"?"model":"user",
+      parts:[{text:m.content}]
+    }));
+    // Append the current user message
+    contents.push({role:"user",parts:[{text:msg}]});
+
+    const systemPrompt=`You are Aria, an elite GATE exam mentor AI inside the GATE Grind app. You are sharp, direct, motivating, and data-driven. You deeply understand GATE exam preparation — syllabus, PYQ patterns, time management, subject strategies.
 
 Student data:
 ${buildStudyContext()}
 
-Rules: Be concise (under 200 words). Reference actual data when relevant. Be a tough but caring mentor — push them, don't coddle. Give specific, actionable advice. Use their name if available.`,
-        messages
+Rules: Be concise (under 200 words). Reference actual data when relevant. Be a tough but caring mentor — push them, don't coddle. Give specific, actionable advice. Use their name if available.`;
+
+    // Gemini REST API — free tier, no credit card needed
+    const model="gemini-2.0-flash";
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const res=await fetch(url,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:systemPrompt}]},
+        contents,
+        generationConfig:{maxOutputTokens:300,temperature:0.75}
       })
     });
+
     const data=await res.json();
     loading.remove();
-    if(data.content&&data.content[0])addAiMessage(data.content[0].text);
-    else if(data.error)addAiMessage("Error: "+data.error.message);
-    else addAiMessage("Unexpected response. Please try again.");
+
+    if(data.candidates&&data.candidates[0]?.content?.parts?.[0]?.text){
+      addAiMessage(data.candidates[0].content.parts[0].text.trim());
+    }else if(data.error){
+      // Surface friendly error messages
+      const code=data.error.code;
+      const errMsg=data.error.message||"Unknown error";
+      if(code===400)addAiMessage("❌ Invalid API key. Go to Settings and paste your Gemini key from aistudio.google.com");
+      else if(code===429)addAiMessage("⏳ Rate limit hit. Free tier allows ~15 requests/min. Wait a moment and try again.");
+      else if(code===403)addAiMessage("🚫 API key doesn't have Gemini access. Ensure you created the key at aistudio.google.com");
+      else addAiMessage("Error "+code+": "+errMsg);
+    }else{
+      addAiMessage("Unexpected response from Gemini. Please try again.");
+    }
   }catch(e){
     loading.remove();
-    addAiMessage("Connection error. Check your internet or API key in Settings.");
+    addAiMessage("Connection error. Check your internet connection and try again.");
   }
   sendBtn.textContent="SEND";sendBtn.disabled=false;
 }
